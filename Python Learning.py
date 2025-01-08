@@ -9,6 +9,8 @@ import threading
 auto_update_flags = {}
 # Global variable to store the latest departure
 latest_departure = None
+fetching_threads = {}
+stop_events = {}
 
 # Asynchronous function to fetch data from the Metro Transit API for a given stop_id
 async def fetch_data(stop_id):
@@ -54,16 +56,21 @@ def start_fetching(stop_id):
     def fetch_and_update():
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        print(f"Starting fetch for {stop_id}")
-        data = loop.run_until_complete(fetch_data(stop_id))
-        update_ui(data.get('departures', []), stop_id)
-        if auto_update_flags.get(stop_id, False):
+        while auto_update_flags.get(stop_id, False):
+            print(f"Starting fetch for {stop_id}")
+            data = loop.run_until_complete(fetch_data(stop_id))
+            update_ui(data.get('departures', []), stop_id)
             print(f"Scheduling next fetch for {stop_id}")
             # Schedule the next fetch after 30 seconds if auto-update is enabled
-            root.after(30000, lambda: start_fetching(stop_id))
+            loop.run_until_complete(asyncio.sleep(30))
+    if stop_id in fetching_threads:
+        auto_update_flags[stop_id] = False
+        fetching_threads[stop_id].join()
 
+    fetching_threads[stop_id] = threading.Thread(target=fetch_and_update)
+    auto_update_flags[stop_id] = True
     # Use a separate thread to fetch data
-    threading.Thread(target=fetch_and_update).start()
+    fetching_threads[stop_id].start()
 
 # Event handler for double-click on Treeview item to show details in a new window
 def on_item_click(event):
@@ -85,11 +92,15 @@ def show_details(route_id, details):
 
 # Function to start auto-update for a given stop_id
 def start_auto_update(stop_id):
+    auto_update_flags[stop_id] = False
+    if stop_id in fetching_threads:
+        fetching_threads[stop_id].join()
     auto_update_flags[stop_id] = True
     start_fetching(stop_id)
 
 # Function to stop auto-update for a given stop_id
 def stop_auto_update(stop_id):
+    print(f'Stopping Auto Update for {stop_id}')
     auto_update_flags[stop_id] = False
 
 # Initialize the main window
@@ -116,10 +127,15 @@ tree.bind('<Double-1>', on_item_click)
 def create_button(stop_id, text, auto_update=False):
     auto_update_flags[stop_id] = False
     if auto_update:
-        button = tk.Button(root, text=text, command=lambda: start_auto_update(stop_id))
+        button = tk.Button(root, text=f'Start {text}', command=lambda: start_auto_update(stop_id))
     else:
-        button = tk.Button(root, text=text, command=lambda: start_fetching(stop_id))
+        button = tk.Button(root, text=f'Fetch {text}', command=lambda: start_fetching(stop_id))
     button.pack(side=tk.LEFT)
+    #Creates Button to Stop auto-update loop
+    stop_button = tk.Button(root, text=f'Stop {text}', command=lambda: stop_auto_update(stop_id))
+    stop_button.pack(side=tk.LEFT)
+
+
 
 # Create buttons for specific stops with auto-update enabled
 create_button('1106', 'Hennepin S', auto_update=True)
