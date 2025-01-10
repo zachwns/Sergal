@@ -23,6 +23,7 @@ async def fetch_data(stop_id):
             print(f'Failed to retrieve data for stop_id {stop_id}:', response.status_code)
             return []
 
+
 # Function to update the UI with fetched data and update the global variable 'latest_departure'
 def update_ui(data, stop_id):
     global latest_departure  # Use the global variable
@@ -76,25 +77,6 @@ def start_fetching(stop_id):
     # Use a separate thread to fetch data
     fetching_threads[stop_id].start()
 
-
-# Event handler for double-click on Treeview item to show details in a new window
-def on_item_click(event):
-    item_id = tree.selection()[0]
-    item = tree.item(item_id)
-    show_details(item['text'], item['values'])
-
-# Function to show details of the selected route in a new window
-def show_details(route_id, details):
-    detail_window = tk.Toplevel(root)
-    detail_window.title(f"Details for Route {route_id}")
-
-    tk.Label(detail_window, text=f"Route ID: {route_id}").pack()
-    tk.Label(detail_window, text=f"Due Time: {details[0]}").pack()
-    tk.Label(detail_window, text=f"Direction: {details[1]}").pack()
-    tk.Label(detail_window, text="Additional info here...").pack()
-
-    tk.Button(detail_window, text="Close", command=detail_window.destroy).pack()
-
 # Function to start auto-update for a given stop_id
 def start_auto_update(stop_id):
     for sid in auto_update_flags.keys():
@@ -114,6 +96,52 @@ def stop_auto_update(stop_id):
     if stop_id in fetching_threads:
         stop_events[stop_id].set()
         fetching_threads[stop_id].join()
+
+
+
+
+async def route_data(route_id):
+    async with httpx.AsyncClient() as client:
+        url = f'https://svc.metrotransit.org/nextrip/directions/{route_id}/'
+        response = await client.get(url)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f'Failed to retrieve data for stop_id {route_id}:', response.status_code)
+            return []
+
+# Function to show details of the selected route in a new window
+def show_details(route_id, details):
+    detail_window = tk.Toplevel(root)
+    detail_window.title(f"Details for Route {route_id}")
+    route_data()
+
+    tk.Label(detail_window, text=f"Route ID: {route_id}").pack()
+    tk.Label(detail_window, text=f"Due Time: {details[0]}").pack()
+    tk.Label(detail_window, text=f"Direction: {details[1]}").pack()
+    tk.Label(detail_window, text="Additional info here...").pack()
+    
+    #Creates Tree to Review Route_Data
+    tree = ttk.Treeview(detail_window)
+    tree['columns'] = ('direction_id', 'direction_name')
+    tree.column('#0', width=100, minwidth=100)
+    tree.column('direction_name', width=100, minwidth=100)
+
+    tree.pack(side='top', fill='both',expand=True)
+
+    tk.Button(detail_window, text="Close", command=detail_window.destroy).pack()
+
+# Event handler for double-click on Treeview item to show details in a new window
+def on_item_click(event):
+    item_id = tree.selection()[0]
+    item = tree.item(item_id)
+    show_details(item['text'], item['values'])
+
+
+
+
+
+
 
 # Initialize the main window
 root = tk.Tk()
@@ -151,6 +179,7 @@ create_button('1106', 'Hennepin S',auto_update=True)
 create_button('1321', 'Hennepin N',auto_update=True)
 create_button('50212', 'Lake E',auto_update=True)
 create_button('3523', 'Lagoon W',auto_update=True)
+
 
 # Start the main event loop
 root.mainloop()
