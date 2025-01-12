@@ -11,6 +11,7 @@ auto_update_flags = {}
 latest_departure = None
 fetching_threads = {}
 stop_events = {}
+route_id = ""
 
 # Asynchronous function to fetch data from the Metro Transit API for a given stop_id
 async def fetch_data(stop_id):
@@ -27,6 +28,7 @@ async def fetch_data(stop_id):
 # Function to update the UI with fetched data and update the global variable 'latest_departure'
 def update_ui(data, stop_id):
     global latest_departure  # Use the global variable
+    global route_id
     print(f"Updating UI with fetched data for stop_id {stop_id}")
     tree.delete(*tree.get_children())  # Clear the Treeview
     if isinstance(data, list) and data:
@@ -100,12 +102,12 @@ def stop_auto_update(stop_id):
 
 
 
-async def route_data(route_id):
+async def route_data():
     async with httpx.AsyncClient() as client:
         url = f'https://svc.metrotransit.org/nextrip/directions/{route_id}/'
         response = await client.get(url)
         if response.status_code == 200:
-            return response.json()
+            return print(response.json())
         else:
             print(f'Failed to retrieve data for stop_id {route_id}:', response.status_code)
             return []
@@ -114,7 +116,7 @@ async def route_data(route_id):
 def show_details(route_id, details):
     detail_window = tk.Toplevel(root)
     detail_window.title(f"Details for Route {route_id}")
-    route_data()
+    route_data(route_id)
 
     tk.Label(detail_window, text=f"Route ID: {route_id}").pack()
     tk.Label(detail_window, text=f"Due Time: {details[0]}").pack()
