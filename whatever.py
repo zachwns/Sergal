@@ -1,24 +1,27 @@
-import httpx
-import asyncio
+import tkinter as tk
+from tkinter import ttk
 
-async def Metro_transit_data():
-    async with httpx.AsyncClient() as client:
-        url = f'https://svc.metrotransit.org/nextrip/1106'
-        response = await client.get(url)
-        if response.status_code == 200:
-            data = response.json()
-            route_id = [departure.get('route_id')for departure in data.get('departures',[])] 
-            desc = [departure.get ('description')for departure in data.get('departures',[])]
-            return route_id, desc
-        else: 
-            print('error')
-            return[]
+main = tk.Tk()
+main.title('idk bored')
+text='button'
+label = (0)
+
+def thing(text):
+    button = tk.Button(main,text=text,command=lambda: fun())
+    button.pack(side=tk.LEFT)
+
+def fun():
+    global label
+    label += 1
+    print(label)
+    if label == 2:
+        tk.Label.destroy
+        label - 2
+        tk.Label(main,text='bye ig').pack()
+    else:
+        tk.Label(main,text='hello').pack()
+
+thing(text)
 
 
-async def main():
-    desc = await Metro_transit_data()
-    route_id = await Metro_transit_data()
-    print(route_id)
-    print(desc)
-
-asyncio.run(main())
+main.mainloop()
